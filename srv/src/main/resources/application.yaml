@@ -1,0 +1,43 @@
+spring:
+  config.activate.on-profile: default
+  sql.init.platform: h2
+
+cds:
+  data-source.auto-config.enabled: false
+  security:
+    authentication:
+      enabled: true
+    jwt:
+      trusted-issuers:
+        - issuer: https://ap8onkwzx.trial-accounts.ondemand.com
+          audiences:
+            - d883b7d6-f69a-4516-8728-bef4d8766717
+
+
+---
+management:
+  endpoint:
+    health:
+      show-components: always
+      probes.enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health
+  health:
+    defaults.enabled: false
+    ping.enabled: true
+    db.enabled: true
+
+---
+# ===============================
+# SAP IAS configuration
+# ===============================
+ias:
+  token-url: ${IAS_TOKEN_URL}
+  scim-base-url: ${IAS_SCIM_BASE_URL}
+  client-id: ${IAS_CLIENT_ID}
+  client-secret: ${IAS_CLIENT_SECRET}
+
+server:
+  port: ${PORT:8080}
