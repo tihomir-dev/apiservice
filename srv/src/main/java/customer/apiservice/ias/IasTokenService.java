@@ -20,13 +20,13 @@ public class IasTokenService {
   private final HttpClient http = HttpClient.newHttpClient();
   private final ObjectMapper om = new ObjectMapper();
 
-  @Value("${ias.token-url}")
+  @Value("${IAS_TOKEN_URL}")
   private String tokenUrl;
 
-  @Value("${ias.client-id}")
+  @Value("${IAS_CLIENT_ID}")
   private String clientId;
 
-  @Value("${ias.client-secret}")
+  @Value("${IAS_CLIENT_SECRET}")
   private String clientSecret;
 
   private volatile String cachedToken;

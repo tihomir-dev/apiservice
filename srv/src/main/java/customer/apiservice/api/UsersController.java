@@ -17,20 +17,16 @@ public class UsersController {
     this.scim = scim;
   }
 
-  @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<String> getUserById(@PathVariable("id") String id) {
+@GetMapping(value = "/{id}", produces = "application/scim+json")
+public ResponseEntity<String> getUserById(@PathVariable(name = "id", required = true) String id) {
 
-    HttpResponse<String> resp = scim.getUserById(id);
 
-    int status = resp.statusCode();
-    String body = resp.body() == null ? "" : resp.body();
+  HttpResponse<String> resp = scim.getUserById(id);
 
-    if (body.isBlank() && status / 100 != 2) {
-      body = "{\"error\":\"IAS SCIM call failed\",\"status\":" + status + "}";
-    }
+  return ResponseEntity
+      .status(resp.statusCode())
+      .header("Content-Type", "application/scim+json")
+      .body(resp.body());
+}
 
-    return ResponseEntity.status(status)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(body);
-  }
 }
