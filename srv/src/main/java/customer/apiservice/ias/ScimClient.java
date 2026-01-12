@@ -50,6 +50,63 @@ public class ScimClient {
     }
   }
 
+  public HttpResponse<String> getUsers(String query) {
+  try {
+    String token = tokenService.getAccessToken();
+
+    String base = scimBaseUrl.endsWith("/")
+        ? scimBaseUrl.substring(0, scimBaseUrl.length() - 1)
+        : scimBaseUrl;
+
+    String q = (query == null || query.isBlank()) ? "" : ("?" + query);
+    URI uri = URI.create(base + "/Users" + q);
+
+    HttpRequest req = HttpRequest.newBuilder(uri)
+        .header("Accept", "application/scim+json, application/json")
+        .header("Authorization", "Bearer " + token)
+        .GET()
+        .build();
+
+    return http.send(req, HttpResponse.BodyHandlers.ofString());
+
+  } catch (Exception e) {
+    return new SimpleStringResponse(
+        500,
+        "{\"error\":\"SCIM call failed\",\"message\":\"" + escapeJson(e.getMessage()) + "\"}"
+    );
+  }
+}
+
+
+  public HttpResponse<String> getUsers() {
+  try {
+    String token = tokenService.getAccessToken();
+
+    String base = scimBaseUrl.endsWith("/")
+        ? scimBaseUrl.substring(0, scimBaseUrl.length() - 1)
+        : scimBaseUrl;
+
+    URI uri = URI.create(base + "/Users");   // <-- no "/{id}"
+
+    HttpRequest req = HttpRequest.newBuilder(uri)
+        .header("Accept", "application/scim+json, application/json")
+        .header("Authorization", "Bearer " + token)
+        .GET()
+        .build();
+
+    return http.send(req, HttpResponse.BodyHandlers.ofString());
+
+  } catch (Exception e) {
+    return new SimpleStringResponse(
+        500,
+        "{\"error\":\"SCIM call failed\",\"message\":\"" + escapeJson(e.getMessage()) + "\"}"
+    );
+  }
+}
+
+  
+
+
   private static String escapeJson(String s) {
     if (s == null) return "";
     return s.replace("\\", "\\\\").replace("\"", "\\\"");

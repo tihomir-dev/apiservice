@@ -16,9 +16,29 @@
 	<!-- ACTUAL DEPENDENCIES -->
 	<dependencies>
 		<!-- CDS SPRING BOOT STARTER -->
+
+		<dependency>
+  			<groupId>com.sap.cloud.db.jdbc</groupId>
+  			<artifactId>ngdbc</artifactId>
+  			<version>2.22.12</version>
+  			<scope>runtime</scope>
+		</dependency>
+
+
+		<dependency>
+  			<groupId>org.springframework.boot</groupId>
+  			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
 		<dependency>
 			<groupId>com.sap.cds</groupId>
 			<artifactId>cds-starter-spring-boot</artifactId>
+		</dependency>
+
+		<dependency>
+  			<groupId>io.pivotal.cfenv</groupId>
+  			<artifactId>java-cfenv-boot</artifactId>
+  			<version>3.3.0</version>
 		</dependency>
 
 		<dependency>
@@ -31,18 +51,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>com.sap.cds</groupId>
-			<artifactId>cds-adapter-odata-v4</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<scope>runtime</scope>
 		</dependency>
 
 		<dependency>
@@ -125,7 +133,6 @@
 						<configuration>
 							<commands>
 								<command>build --for java</command>
-								<command>deploy --to h2 --with-mocks --dry --out "${project.basedir}/src/main/resources/schema-h2.sql"</command>
 							</commands>
 						</configuration>
 					</execution>

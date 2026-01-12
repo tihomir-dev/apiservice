@@ -1,37 +1,17 @@
 spring:
-  config.activate.on-profile: default
-  sql.init.platform: h2
+  config:
+    activate:
+      on-profile: default
 
-cds:
-  data-source.auto-config.enabled: false
-  security:
-    authentication:
-      enabled: true
-    jwt:
-      trusted-issuers:
-        - issuer: https://ap8onkwzx.trial-accounts.ondemand.com
-          audiences:
-            - d883b7d6-f69a-4516-8728-bef4d8766717
+  # IMPORTANT: keep this OFF (otherwise you'll crash with "Unsupported Database: HDB 4.0")
+  flyway:
+    enabled: false
 
+server:
+  port: ${PORT:8080}
 
----
-management:
-  endpoint:
-    health:
-      show-components: always
-      probes.enabled: true
-  endpoints:
-    web:
-      exposure:
-        include: health
-  health:
-    defaults.enabled: false
-    ping.enabled: true
-    db.enabled: true
-
----
 # ===============================
-# SAP IAS configuration
+# SAP IAS configuration (for your SCIM client)
 # ===============================
 ias:
   token-url: ${IAS_TOKEN_URL}
@@ -39,5 +19,34 @@ ias:
   client-id: ${IAS_CLIENT_ID}
   client-secret: ${IAS_CLIENT_SECRET}
 
-server:
-  port: ${PORT:8080}
+# ===============================
+# CAP / Cloud Foundry security integration
+# ===============================
+cds:
+  data-source:
+    auto-config:
+      enabled: false
+  security:
+    authentication:
+      enabled: true
+
+# ===============================
+# Health endpoint for CF / Kubernetes-style probes
+# ===============================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-components: always
+      probes:
+        enabled: true
+  health:
+    defaults:
+      enabled: false
+    ping:
+      enabled: true
+    db:
+      enabled: true
