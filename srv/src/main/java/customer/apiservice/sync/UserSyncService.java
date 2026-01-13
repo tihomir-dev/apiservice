@@ -70,11 +70,11 @@ public class UserSyncService {
 
           String status = statusFromCoreOrSap(u); // ACTIVE/INACTIVE
 
-          // --- Optional DB fields ---
+          // --- Optional DB fields --- 
           LocalDate validFrom = parseDateFromIsoInstant(text(u.path(SAP_EXT), "validFrom"));
           LocalDate validTo = parseDateFromIsoInstant(text(u.path(SAP_EXT), "validTo"));
 
-          // company: in your payload it’s enterprise extension organization
+          // company
           String company = text(u.path(ENT_EXT), "organization");
 
           Address addr = pickAddressCoreOrSap(u);
@@ -155,7 +155,7 @@ public class UserSyncService {
       )
       """;
 
-  // ---------- Mapping helpers ----------
+  
 
   private static String firstEmailCoreOrSap(JsonNode user) {
     // core emails
@@ -247,7 +247,7 @@ public class UserSyncService {
   private static LocalDate parseDateFromIsoInstant(String isoInstant) {
     if (isBlank(isoInstant)) return null;
     try {
-      // validFrom/validTo are like 2026-01-12T00:00:00Z => date part
+      // validFrom/validTo
       return OffsetDateTime.parse(isoInstant).toLocalDate();
     } catch (Exception e) {
       return null;

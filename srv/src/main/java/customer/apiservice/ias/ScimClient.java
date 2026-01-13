@@ -18,7 +18,7 @@ public class ScimClient {
   private final IasTokenService tokenService;
 
   @Value("${IAS_SCIM_BASE_URL}")
-  private String scimBaseUrl; // e.g. https://.../scim/v2
+  private String scimBaseUrl;
 
   public ScimClient(IasTokenService tokenService) {
     this.tokenService = tokenService;
