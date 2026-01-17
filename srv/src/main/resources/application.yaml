@@ -28,7 +28,9 @@ cds:
       enabled: false
   security:
     authentication:
-      enabled: true
+      enabled: false
+      mode: mocked
+
 
 # ===============================
 # Health endpoint for CF / Kubernetes-style probes

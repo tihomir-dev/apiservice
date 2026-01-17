@@ -83,10 +83,10 @@ public class UserSyncService {
 
           Timestamp iasLastModified = parseTimestamp(text(u.path("meta"), "lastModified"));
 
-          // Fix-up: IAS sometimes returns empty userName; for DB LOGIN_NAME NOT NULL we fallback to email
+          // for DB LOGIN_NAME NOT NULL we fallback to email
           if (isBlank(loginName)) loginName = email;
 
-          // Validate DB required fields; skip bad records rather than failing the whole sync
+         
           if (isBlank(id) || isBlank(loginName) || isBlank(email) || isBlank(lastName) || isBlank(userType) || isBlank(status)) {
             skipped++;
             continue;

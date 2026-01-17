@@ -3,11 +3,16 @@ ID: apiservice
 version: 1.0.0
 
 modules:
+  # Backend Service - Uses Java ✅
   - name: apiservice-srv
     type: java
     path: srv
     parameters:
       memory: 1024M
+      buildpack: sap_java_buildpack_jakarta
+    properties:
+      JBP_CONFIG_COMPONENTS: "jres: ['com.sap.xs.java.buildpack.jdk.SAPMachineJDK']"
+      JBP_CONFIG_SAP_MACHINE_JDK: '{ version: 17.+ }'
     build-parameters:
       builder: maven
       build-result: "target/*.jar"
@@ -18,14 +23,12 @@ modules:
     requires:
       - name: apiservice-hdi
 
+  # Database Deployer - Uses Node.js (default) ✅
   - name: apiservice-db-deployer
-    type: nodejs
+    type: hdb
     path: db
     parameters:
       memory: 256M
-      no-route: true
-      health-check-type: process
-      health-check-timeout: 180
     requires:
       - name: apiservice-hdi
 
@@ -35,7 +38,3 @@ resources:
     parameters:
       service: hana
       service-plan: hdi-shared
-      # IMPORTANT:
-      # If you already created an HDI service instance named "hdi-container" and you want to reuse it,
-      # uncomment the next line:
-      # service-name: hdi-container
