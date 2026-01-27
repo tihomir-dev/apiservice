@@ -61,7 +61,7 @@ public class GroupService {
         iasGroups = new ArrayList<>();
       }
 
-      log.info("Found {} groups in IAS", iasGroups.size());
+      //log.info("Found {} groups in IAS", iasGroups.size());
 
       int inserted = 0;
       int updated = 0;
@@ -80,7 +80,7 @@ public class GroupService {
 
           
           // Extract members
-          @SuppressWarnings("unchecked")
+          //@SuppressWarnings("unchecked")
           List<Map<String, Object>> iasMembers = (List<Map<String, Object>>) iasGroup.get("members");
 
           // Check if group already exists in DB
@@ -108,6 +108,7 @@ public class GroupService {
             // Update existing group
             Map<String, Object> updates = new HashMap<>();
             updates.put("displayName", displayName);
+            updates.put("description", description);
             updates.put("iasLastModified", iasGroup.get("meta") != null ? 
                 ((Map<String, Object>) iasGroup.get("meta")).get("lastModified") : null);
 
@@ -161,8 +162,8 @@ public class GroupService {
       throw new RuntimeException("Failed to create group in IAS: " + iasResponse.statusCode() + " - " + iasResponse.body());
     }
 
-    // 2. Parse IAS response to get the generated ID
-    @SuppressWarnings("unchecked")
+    // Parse IAS response to get the generated ID
+   // @SuppressWarnings("unchecked")
     Map<String, Object> iasGroup = objectMapper.readValue(iasResponse.body(), Map.class);
 
     String id = (String) iasGroup.get("id");
@@ -170,7 +171,6 @@ public class GroupService {
     String iasLastModified = null;
     
     if (iasGroup.get("meta") != null) {
-      @SuppressWarnings("unchecked")
       Map<String, Object> meta = (Map<String, Object>) iasGroup.get("meta");
       iasLastModified = (String) meta.get("lastModified");
     }
@@ -199,7 +199,7 @@ public class GroupService {
   public Map<String, Object> updateGroup(String id, String newDisplayName, String newDescription) throws Exception {
     log.info("Updating group: id={}, displayName={}", id, newDisplayName);
 
-    // 1. Update in IAS first
+    // Update in IAS first
     
     HttpResponse<String> iasResponse = scimClient.updateGroup(id, newDisplayName, newDescription);
 
@@ -207,7 +207,7 @@ public class GroupService {
       throw new RuntimeException("Failed to update group in IAS: " + iasResponse.statusCode() + " - " + iasResponse.body());
     }
 
-    // 2. Parse IAS response
+    // Parse IAS response
     String iasLastModified = null;
     String responseBody = iasResponse.body();
     
@@ -326,7 +326,7 @@ public class GroupService {
     log.info("Member removed from DB: groupId={}, userId={}", groupId, userId);
   }
 
-  // ========== HELPER METHODS ==========
+  // HELPER METHODS
 
   /**
    * Sync members from IAS to DB

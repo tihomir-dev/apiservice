@@ -213,7 +213,7 @@ public class GroupsController {
    */
   @GetMapping("/{id}/members")
   public ResponseEntity<Map<String, Object>> getGroupMembers(@PathVariable("id") String id) {
-    log.info("GET /groups/{}/members", id);
+   
     
     try {
       Optional<Map<String, Object>> group = groupRepository.findById(id);
@@ -256,7 +256,7 @@ public class GroupsController {
             .body(Map.of("error", "Group not found", "id", id));
       }
       
-      @SuppressWarnings("unchecked")
+    
       List<String> userIds = (List<String>) request.get("userIds");
       
       if (userIds == null || userIds.isEmpty()) {

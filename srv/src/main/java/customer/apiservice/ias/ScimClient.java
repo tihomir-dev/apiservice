@@ -448,7 +448,7 @@ public HttpResponse<String> deleteUser(String userId) {
     }
 }
 
-    // ========== GROUP METHODS ==========
+    // GROUP METHODS 
 
   /**
    * Get all groups from IAS

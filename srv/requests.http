@@ -1,0 +1,27 @@
+### Assign member to group
+curl -X POST \
+  https://945d5126trial-dev-apiservice-srv.cfapps.us10-001.hana.ondemand.com/groups/fb0919f6-8eb4-4a65-9105-90339846ae01/members \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userIds": ["c4919847-c3fe-4f8c-b985-531fce4ff4ba",
+                "5366fdae-04d1-420f-b69c-de546e9983d2"]
+  }'
+
+### Create User
+curl -i -X POST "https://945d5126trial-dev-apiservice-srv.cfapps.us10-001.hana.ondemand.com/users" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "loginName": "test.user",
+    "email": "johny12@gmail.com",
+    "lastName": "User",
+    "firstName": "Test",
+    "userType": "employee"
+  }'
+
+### Sync users
+curl --http1.1 -i -X POST \
+  -H "Accept: application/json" \
+  "https://945d5126trial-dev-apiservice-srv.cfapps.us10-001.hana.ondemand.com/users/sync"   
+
+### Sync Groups
+curl -X POST "https://945d5126trial-dev-apiservice-srv.cfapps.us10-001.hana.ondemand.com/groups/sync" 

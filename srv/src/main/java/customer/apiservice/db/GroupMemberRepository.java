@@ -84,7 +84,7 @@ public class GroupMemberRepository {
     String sql = "DELETE FROM GROUP_MEMBERS WHERE GROUP_ID = ? AND USER_ID = ?";
     int rowsAffected = jdbc.update(sql, groupId, userId);
     log.info("Removed user {} from group {}, rows affected={}", userId, groupId, rowsAffected);
-    return rowsAffected;
+    return rowsAffected; 
   }
 
   /**

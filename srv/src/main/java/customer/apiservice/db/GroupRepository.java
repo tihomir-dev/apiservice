@@ -49,14 +49,11 @@ public class GroupRepository {
   ) {
     SqlAndParams sp = buildGroupsQuery(false, startIndex, count, search);
     
-    log.info("=== FIND GROUPS DEBUG ===");
+   
     log.info("SQL: {}", sp.sql);
     log.info("Params: {}", sp.params);
     
     List<Map<String, Object>> results = jdbc.queryForList(sp.sql, sp.params.toArray());
-    
-    log.info("Results returned: {}", results.size());
-    log.info("=========================");
     
     return results;
   }

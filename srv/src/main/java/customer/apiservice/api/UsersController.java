@@ -2,6 +2,7 @@ package customer.apiservice.api;
 
 import customer.apiservice.db.UserRepository;
 import customer.apiservice.sync.UserSyncService;
+import customer.apiservice.db.GroupMemberRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -29,12 +30,13 @@ public class UsersController {
   private final UserRepository users;
   private final UserSyncService syncService;
   private final ScimClient scimClient; 
+  private final GroupMemberRepository groupMemberRepository;
 
-  public UsersController(UserRepository users, UserSyncService syncService, ScimClient scimClient) {
+  public UsersController(UserRepository users, UserSyncService syncService, ScimClient scimClient, GroupMemberRepository groupMemberRepository) {
     this.users = users;
     this.syncService = syncService;
     this.scimClient = scimClient; 
-
+    this.groupMemberRepository = groupMemberRepository;
   }
 
 
@@ -425,5 +427,33 @@ public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable("id") String
                 "id", id
             ));
     }
+}
+@GetMapping("/{id}/groups")
+public ResponseEntity<Map<String, Object>> getUserGroups(@PathVariable("id") String userId) {
+  log.info("GET /users/{}/groups", userId);
+  
+  try {
+    // Check if user exists
+    Optional<Map<String, Object>> user = users.findById(userId);
+    if (user.isEmpty()) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+          .body(Map.of("error", "User not found", "userId", userId));
+    }
+    
+    // Get user's groups
+    List<Map<String, Object>> groups = groupMemberRepository.findGroupsByUserId(userId);
+    
+    Map<String, Object> response = new LinkedHashMap<>();
+    response.put("userId", userId);
+    response.put("totalGroups", groups.size());
+    response.put("groups", groups);
+    
+    return ResponseEntity.ok(response);
+    
+  } catch (Exception e) {
+    log.error("Error getting user groups: " + userId, e);
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(Map.of("error", "Failed to get user groups", "message", e.getMessage()));
+  }
 }
 }
