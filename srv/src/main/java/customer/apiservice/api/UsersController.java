@@ -3,6 +3,7 @@ package customer.apiservice.api;
 import customer.apiservice.db.UserRepository;
 import customer.apiservice.sync.UserSyncService;
 import customer.apiservice.db.GroupMemberRepository;
+import customer.apiservice.util.FieldValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -106,7 +107,7 @@ public class UsersController {
 
   //Create User
 
-  @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, 
+@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, 
                produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<Map<String, Object>> createUser(@RequestBody Map<String, Object> userData) {
     log.info("=== CREATE USER REQUEST ===");
@@ -114,7 +115,23 @@ public class UsersController {
     
     try {
     
-      validateRequiredFieldsForCreate(userData);
+      // Validate required fields using FieldValidator
+        ResponseEntity<Map<String, Object>> requiredError = FieldValidator.checkRequired(
+            userData, 
+            "lastName", 
+            "email", 
+            "userType", 
+            "loginName"
+        );
+        if (requiredError != null) {
+            return requiredError;
+        }
+        
+        // Validate email format
+        ResponseEntity<Map<String, Object>> emailError = FieldValidator.checkEmail((String) userData.get("email"));
+        if (emailError != null) {
+            return emailError;
+        }
       
       if (!userData.containsKey("status") || userData.get("status") == null || 
           ((String) userData.get("status")).trim().isEmpty()) {
@@ -160,40 +177,7 @@ public class UsersController {
           .status(500)
           .body(Map.of("error", "Internal server error", "message", e.getMessage()));
     }
-  }
-
-    private void validateRequiredFieldsForCreate(Map<String, Object> userData) {
-    List<String> missingFields = new ArrayList<>();
-    
-    if (!hasValue(userData, "lastName")) {
-      missingFields.add("lastName");
-    }
-    if (!hasValue(userData, "email")) {
-      missingFields.add("email");
-    }
-    if (!hasValue(userData, "userType")) {
-      missingFields.add("userType");
-    }
-    if (!hasValue(userData, "loginName")) {
-      missingFields.add("loginName");
-    }
-    
-    if (!missingFields.isEmpty()) {
-      throw new IllegalArgumentException("Missing required fields: " + String.join(", ", missingFields));
-    }
-  }
-
-  /**
-   * Helper to check if a field has a non-empty value
-   */
-  private boolean hasValue(Map<String, Object> map, String key) {
-    Object value = map.get(key);
-    if (value == null) return false;
-    if (value instanceof String) {
-      return !((String) value).trim().isEmpty();
-    }
-    return true;
-  }
+  } 
 
   /**
    * Extracts user data from SCIM response and maps to DB format
@@ -289,7 +273,7 @@ public class UsersController {
  * Update a user
  * PATCH /users/{id}
  */
-@PatchMapping(value = "/{id}", 
+ @PatchMapping(value = "/{id}", 
               consumes = MediaType.APPLICATION_JSON_VALUE,
               produces = MediaType.APPLICATION_JSON_VALUE)
 public ResponseEntity<Map<String, Object>> updateUser(
@@ -318,35 +302,18 @@ public ResponseEntity<Map<String, Object>> updateUser(
                     "field", "id"
                 ));
         }
-        
-        // Email format if provided
-        if (updates.containsKey("email")) {
-            String email = (String) updates.get("email");
-            if (email != null && !email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of(
-                        "error", "Invalid email format",
-                        "field", "email",
-                        "value", email
-                    ));
-            }
+        ResponseEntity<Map<String, Object>> emailError = FieldValidator.checkEmail((String) updates.get("email"));
+        if (emailError != null) {
+            return emailError;
         }
         
-        // Status values
-        if (updates.containsKey("status")) {
-            String status = (String) updates.get("status");
-            if (status != null && 
-                !status.equalsIgnoreCase("ACTIVE") && 
-                !status.equalsIgnoreCase("INACTIVE")) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of(
-                        "error", "Status must be ACTIVE or INACTIVE",
-                        "field", "status",
-                        "value", status
-                    ));
-            }
+        // Validate status if provided
+        ResponseEntity<Map<String, Object>> statusError = FieldValidator.checkStatus((String) updates.get("status"));
+        if (statusError != null) {
+            return statusError;
         }
         
+      
         // Update user in IAS
         Map<String, Object> iasResponse = scimClient.patchUser(id, updates);
         
@@ -369,7 +336,9 @@ public ResponseEntity<Map<String, Object>> updateUser(
             ));
     }
     
-}
+} 
+
+
     /**
  * Delete a user
  * DELETE /users/{id}
@@ -473,14 +442,13 @@ public ResponseEntity<Map<String, Object>> addUserToGroups(
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("error", "User not found", "id", id));
         }
-        
-        List<String> groupIds = (List<String>) request.get("groupIds");
-        
-        if (groupIds == null || groupIds.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("error", "groupIds array is required and must not be empty"));
+        ResponseEntity<Map<String, Object>> groupIdsError = FieldValidator.checkRequired(request, "groupIds");
+        if (groupIdsError != null) {
+            return groupIdsError;
         }
         
+        List<String> groupIds = (List<String>) request.get("groupIds");
+                
         // Add user to each group in IAS
         List<String> added = new ArrayList<>();
         List<String> failed = new ArrayList<>();

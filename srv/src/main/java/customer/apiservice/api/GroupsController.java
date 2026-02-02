@@ -3,6 +3,7 @@ package customer.apiservice.api;
 import customer.apiservice.db.GroupRepository;
 import customer.apiservice.db.GroupMemberRepository;
 import customer.apiservice.sync.GroupService;
+import customer.apiservice.util.FieldValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -111,20 +112,15 @@ public class GroupsController {
     log.info("POST /groups - {}", request);
     
     try {
+      ResponseEntity<Map<String, Object>> requiredError = FieldValidator.checkRequired(request, "name", "displayName");
+        if (requiredError != null) {
+            return requiredError;
+        }
+
       String name = (String) request.get("name");
       String displayName = (String) request.get("displayName");
       String description = (String) request.get("description");
-      
-      if (displayName == null || displayName.trim().isEmpty()) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(Map.of("error", "displayName is required"));
-      }
-
-      if(name == null || name.trim().isEmpty()){
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-          .body(Map.of("error", "name is required"));
-      }
-
+    
       Optional<Map<String, Object>> existing = groupRepository.findByName(name.trim());
       if (existing.isPresent()) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -160,14 +156,13 @@ public class GroupsController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(Map.of("error", "Group not found", "id", id));
       }
+      ResponseEntity<Map<String, Object>> displayNameError = FieldValidator.checkRequired(updates, "displayName");
+        if (displayNameError != null) {
+            return displayNameError;
+        }
       
       String newDisplayName = (String) updates.get("displayName");
       String newDescription = (String) updates.get("description");
-      
-      if (newDisplayName == null || newDisplayName.trim().isEmpty()) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(Map.of("error", "displayName is required"));
-      }
       
       // Update in IAS first, then DB
       Map<String, Object> group = groupService.updateGroup(id, newDisplayName, newDescription);
@@ -255,15 +250,13 @@ public class GroupsController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(Map.of("error", "Group not found", "id", id));
       }
+      ResponseEntity<Map<String, Object>> userIdsError = FieldValidator.checkRequired(request, "userIds");
+        if (userIdsError != null) {
+            return userIdsError;
+        }
       
     
-      List<String> userIds = (List<String>) request.get("userIds");
-      
-      if (userIds == null || userIds.isEmpty()) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(Map.of("error", "userIds array is required and must not be empty"));
-      }
-      
+      List<String> userIds = (List<String>) request.get("userIds");   
       // Add to IAS first, then DB
       Map<String, Object> result = groupService.addMembers(id, userIds);
       
