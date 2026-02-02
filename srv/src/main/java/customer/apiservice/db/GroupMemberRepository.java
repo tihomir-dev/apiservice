@@ -86,6 +86,15 @@ public class GroupMemberRepository {
     log.info("Removed user {} from group {}, rows affected={}", userId, groupId, rowsAffected);
     return rowsAffected; 
   }
+  
+  public void removeMembers(String groupId, List<String> userIds) {
+  String sql = "DELETE FROM GROUP_MEMBERS WHERE GROUP_ID = ? AND USER_ID = ?";
+  
+  for (String userId : userIds) {
+    jdbc.update(sql, groupId, userId);
+    log.info("Removed user {} from group {}", userId, groupId);
+  }
+}
 
   /**
    * Remove all members from a group (used before deleting group)

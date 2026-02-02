@@ -10,6 +10,7 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.ArrayList;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.HashMap;
 
 @Component
 public class ScimClient {
@@ -285,99 +286,133 @@ private String quote(String s) {
 
     // Handle loginName (userName)
     if (updates.containsKey("loginName")) {
-        operations.add(Map.of(
-            "op", "replace",
-            "path", "userName",
-            "value", updates.get("loginName")
-        ));
+        Object loginNameValue = updates.get("loginName");
+        if (loginNameValue != null) {
+            Map<String, Object> op = new HashMap<>();
+            op.put("op", "replace");
+            op.put("path", "userName");
+            op.put("value", loginNameValue);
+            operations.add(op);
+        }
     }
 
     if (updates.containsKey("lastName")) {
-        operations.add(Map.of(
-            "op", "replace",
-            "path", "name.familyName",
-            "value", updates.get("lastName")
-        ));
+        Object lastNameValue = updates.get("lastName");
+        if (lastNameValue != null) {
+            Map<String, Object> op = new HashMap<>();
+            op.put("op", "replace");
+            op.put("path", "name.familyName");
+            op.put("value", lastNameValue);
+            operations.add(op);
+        }
     }
 
     if (updates.containsKey("firstName")) {
-        operations.add(Map.of(
-            "op", "replace",
-            "path", "name.givenName",
-            "value", updates.get("firstName")
-        ));
+        Object firstNameValue = updates.get("firstName");
+        if (firstNameValue != null) {
+            Map<String, Object> op = new HashMap<>();
+            op.put("op", "replace");
+            op.put("path", "name.givenName");
+            op.put("value", firstNameValue);
+            operations.add(op);
+        }
     }
 
-    if (updates.containsKey("email")) {
-        operations.add(Map.of(
-            "op", "replace",
-            "path", "emails[0].value",
-            "value", updates.get("email")
-        ));
+   if (updates.containsKey("email")) {
+    Object emailValue = updates.get("email");
+    if (emailValue != null) {
+        Map<String, Object> op = new HashMap<>();
+        op.put("op", "replace");
+        op.put("path", "emails[primary eq true].value");
+        op.put("value", emailValue);
+        operations.add(op);
     }
+}
 
     if (updates.containsKey("status")) {
         String status = (String) updates.get("status");
-        boolean active = "ACTIVE".equalsIgnoreCase(status);
-        operations.add(Map.of(
-            "op", "replace",
-            "path", "active",
-            "value", active
-        ));
+        if (status != null) {
+            boolean active = "ACTIVE".equalsIgnoreCase(status);
+            Map<String, Object> op = new HashMap<>();
+            op.put("op", "replace");
+            op.put("path", "active");
+            op.put("value", active);
+            operations.add(op);
+        }
     }
 
     if (updates.containsKey("userType")) {
-        operations.add(Map.of(
-            "op", "replace",
-            "path", "userType",
-            "value", updates.get("userType")
-        ));
+        Object userTypeValue = updates.get("userType");
+        if (userTypeValue != null) {
+            Map<String, Object> op = new HashMap<>();
+            op.put("op", "replace");
+            op.put("path", "userType");
+            op.put("value", userTypeValue);
+            operations.add(op);
+        }
     }
 
     if (updates.containsKey("company")) {
-        operations.add(Map.of(
-            "op", "replace",
-            "path", "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:organization",
-            "value", updates.get("company")
-        ));
+        Object companyValue = updates.get("company");
+        if (companyValue != null) {
+            Map<String, Object> op = new HashMap<>();
+            op.put("op", "replace");
+            op.put("path", "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:organization");
+            op.put("value", companyValue);
+            operations.add(op);
+        }
     }
 
     if (updates.containsKey("city")) {
-        operations.add(Map.of(
-            "op", "replace",
-            "path", "addresses[type eq \"work\"].locality",
-            "value", updates.get("city")
-        ));
+        Object cityValue = updates.get("city");
+        if (cityValue != null) {
+            Map<String, Object> op = new HashMap<>();
+            op.put("op", "replace");
+            op.put("path", "addresses[type eq \"work\"].locality");
+            op.put("value", cityValue);
+            operations.add(op);
+        }
     }
 
     if (updates.containsKey("country")) {
-        operations.add(Map.of(
-            "op", "replace",
-            "path", "addresses[type eq \"work\"].country",
-            "value", updates.get("country")
-        ));
+        Object countryValue = updates.get("country");
+        if (countryValue != null) {
+            Map<String, Object> op = new HashMap<>();
+            op.put("op", "replace");
+            op.put("path", "addresses[type eq \"work\"].country");
+            op.put("value", countryValue);
+            operations.add(op);
+        }
     }
 
-    if (updates.containsKey("validFrom")) {
-        operations.add(Map.of(
-            "op", "replace",
-            "path", "urn:ietf:params:scim:schemas:extension:sap:2.0:User:validFrom",
-            "value", updates.get("validFrom")
-        ));
+     if (updates.containsKey("validFrom")) {
+        Object validFromValue = updates.get("validFrom");
+        if (validFromValue != null) {
+            Map<String, Object> op = new HashMap<>();
+            op.put("op", "replace");
+            op.put("path", "urn:ietf:params:scim:schemas:extension:sap:2.0:User:validFrom");
+            op.put("value", validFromValue);
+            operations.add(op);
+        }
     }
-
     if (updates.containsKey("validTo")) {
-        operations.add(Map.of(
-            "op", "replace",
-            "path", "urn:ietf:params:scim:schemas:extension:sap:2.0:User:validTo",
-            "value", updates.get("validTo")
-        ));
+        Object validToValue = updates.get("validTo");
+        if (validToValue != null) {
+            Map<String, Object> op = new HashMap<>();
+            op.put("op", "replace");
+            op.put("path", "urn:ietf:params:scim:schemas:extension:sap:2.0:User:validTo");
+            op.put("value", validToValue);
+            operations.add(op);
+        }
     }
 
-    Map<String, Object> patchRequest = Map.of(
+   /*  Map<String, Object> patchRequest = Map.of(
         "schemas", List.of("urn:ietf:params:scim:api:messages:2.0:PatchOp"),
         "Operations", operations
-    );
+    ); */
+    Map<String, Object> patchRequest = new HashMap<>();
+    patchRequest.put("schemas", List.of("urn:ietf:params:scim:api:messages:2.0:PatchOp"));
+    patchRequest.put("Operations", operations);
 
     // Convert to JSON using Jackson
     String patchJson = objectMapper.writeValueAsString(patchRequest);
@@ -403,11 +438,11 @@ private String quote(String s) {
         
         if (responseBody == null || responseBody.trim().isEmpty()) {
           
-            return Map.of(
-                "success", true,
-                "statusCode", response.statusCode(),
-                "message", "User updated successfully (no response body)"
-            );
+            Map<String, Object> successResponse = new HashMap<>();
+            successResponse.put("success", true);
+            successResponse.put("statusCode", response.statusCode());
+            successResponse.put("message", "User updated successfully (no response body)");
+            return successResponse;
         }
         
         // Parse JSON response back to Map using Jackson
@@ -697,11 +732,7 @@ public HttpResponse<String> deleteUser(String userId) {
     }
   }
 
-
-
-
-
-
+  
 
 }
 

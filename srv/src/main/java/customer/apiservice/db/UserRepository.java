@@ -4,6 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.sql.Timestamp;
+import java.util.HashMap;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,9 +20,12 @@ public class UserRepository {
 
   private static final Logger log = LoggerFactory.getLogger(UserRepository.class);
   private final JdbcTemplate jdbc;
+  private final GroupMemberRepository groupMemberRepository;
 
-  public UserRepository(JdbcTemplate jdbc) {
+
+  public UserRepository(JdbcTemplate jdbc, GroupMemberRepository groupMemberRepository) {
     this.jdbc = jdbc;
+    this.groupMemberRepository = groupMemberRepository;
   }
 
   public Optional<Map<String, Object>> findById(String id) {
@@ -33,9 +40,10 @@ public class UserRepository {
       String search,
       String email,
       String status,
-      String userType
+      String userType,
+      String country
   ) {
-    SqlAndParams sp = buildUsersQuery(false, startIndex, count, search, email, status, userType);
+    SqlAndParams sp = buildUsersQuery(false, startIndex, count, search, email, status, userType, country);
     
     log.info("=== FIND USERS DEBUG ===");
     log.info("SQL: {}", sp.sql);
@@ -50,8 +58,8 @@ public class UserRepository {
     return results;
   }
 
-  public int countUsers(String search, String email, String status, String userType) {
-    SqlAndParams sp = buildUsersQuery(true, 1, 1, search, email, status, userType);
+  public int countUsers(String search, String email, String status, String userType, String country) {
+    SqlAndParams sp = buildUsersQuery(true, 1, 1, search, email, status, userType, country);
     
     log.info("=== COUNT USERS DEBUG ===");
     log.info("SQL: {}", sp.sql);
@@ -73,7 +81,8 @@ public class UserRepository {
       String search,
       String email,
       String status,
-      String userType
+      String userType,
+      String country
   ) {
     StringBuilder sql = new StringBuilder();
     List<Object> params = new ArrayList<>();
@@ -106,6 +115,12 @@ public class UserRepository {
       sql.append(" AND LOWER(USER_TYPE) = LOWER(?)");
       params.add(userType.trim());
       log.debug("Adding userType filter: {}", userType.trim());
+    }
+
+    if (country != null && !country.trim().isEmpty()) {
+      sql.append(" AND UPPER(COUNTRY) = UPPER(?)");
+      params.add(country.trim());
+      log.debug("Adding country filter: {}", country.trim());
     }
 
     // Search across multiple columns
@@ -279,20 +294,61 @@ public void updateUser(String id, Map<String, Object> updates) {
     }
     
     // Handle validFrom
-    if (updates.containsKey("validFrom")) {
+    /* if (updates.containsKey("validFrom")) {
         if (!first) sql.append(", ");
         sql.append("VALID_FROM = ?");
         params.add(updates.get("validFrom"));
         first = false;
+    } */
+   if (updates.containsKey("validFrom")) {
+    Object validFromValue = updates.get("validFrom");
+    if (validFromValue != null) {
+        try {
+            if (!first) sql.append(", ");
+            sql.append("VALID_FROM = ?");
+            
+            // Parse ISO8601 string "2026-01-12T00:00:00Z"
+            String dateStr = String.valueOf(validFromValue).replace("Z", "");
+            LocalDateTime parsed = LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            params.add(Timestamp.valueOf(parsed));
+            
+            first = false;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid validFrom date format: " + validFromValue + 
+                ". Expected format: YYYY-MM-DDTHH:mm:ssZ", e);
+        }
     }
+}
+      if (updates.containsKey("validTo")) {
+    Object validToValue = updates.get("validTo");
+    if (validToValue != null) {
+        try {
+            if (!first) sql.append(", ");
+            sql.append("VALID_TO = ?");
+            
+            // Parse ISO8601 string "2026-08-19T00:00:00Z"
+            String dateStr = String.valueOf(validToValue).replace("Z", "");
+            LocalDateTime parsed = LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            params.add(Timestamp.valueOf(parsed));
+            
+            first = false;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid validTo date format: " + validToValue + 
+                ". Expected format: YYYY-MM-DDTHH:mm:ssZ", e);
+        }
+    }
+}
     
     // Handle validTo
-    if (updates.containsKey("validTo")) {
+    /* if (updates.containsKey("validTo")) {
         if (!first) sql.append(", ");
         sql.append("VALID_TO = ?");
-        params.add(updates.get("validTo"));
+        String dateStr = updates.get("validTo").replace("Z", "");
+        LocalDateTime parsed = LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        params.add(Timestamp.valueOf(parsed));
+      //  params.add(updates.get("validTo"));
         first = false;
-    }
+    } */
     
     // Always update UPDATED_AT timestamp
     if (!first) sql.append(", ");
@@ -319,6 +375,25 @@ public int deleteUser(String id) {
     String sql = "DELETE FROM USERS WHERE ID = ?";
     return jdbc.update(sql, id);
 }
+
+public void addUserToGroup(String userId, String groupId) {
+    groupMemberRepository.addMember(groupId, userId);
+}
+
+/**
+ * Remove user from group in database
+ */
+public void removeUserFromGroup(String userId, String groupId) {
+    groupMemberRepository.removeMember(groupId, userId);
+}
+
+/**
+ * Check if user is already in group
+ */
+public boolean isUserInGroup(String userId, String groupId) {
+    return groupMemberRepository.isMember(groupId, userId);
+}
+
 
 
 }

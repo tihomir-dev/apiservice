@@ -47,7 +47,8 @@ public class UsersController {
       @RequestParam(name = "search", required = false) String search,
       @RequestParam(name = "email", required = false) String email,
       @RequestParam(name = "status", required = false) String status,
-      @RequestParam(name = "userType", required = false) String userType
+      @RequestParam(name = "userType", required = false) String userType,
+      @RequestParam(name = "country", required = false) String country
   ) {
     // DEBUG: Log all incoming parameters
     log.info("=== CONTROLLER DEBUG ===");
@@ -57,10 +58,11 @@ public class UsersController {
     log.info("email: {}", email);
     log.info("status: {}", status);
     log.info("userType: {}", userType);
+     log.info("country: {}", country);
     log.info("========================");
 
-    int total = users.countUsers(search, email, status, userType);
-    List<Map<String, Object>> rows = users.findUsers(startIndex, count, search, email, status, userType);
+    int total = users.countUsers(search, email, status, userType, country);
+    List<Map<String, Object>> rows = users.findUsers(startIndex, count, search, email, status, userType, country);
 
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("version", "FILTERS_V1");
@@ -75,6 +77,7 @@ public class UsersController {
     if (email != null) filters.put("email", email);
     if (status != null) filters.put("status", status);
     if (userType != null) filters.put("userType", userType);
+    if (country != null) filters.put("country", country);
     body.put("filters", filters);
 
     return ResponseEntity.ok(body);
@@ -136,7 +139,7 @@ public class UsersController {
       ObjectMapper om = new ObjectMapper();
       JsonNode iasUser = om.readTree(iasResponse.body());
       
-      // 6. Extract user data and insert into local DB
+      //  Extract user data and insert into local DB
       Map<String, Object> userToStore = extractUserDataFromScim(iasUser);
       log.info("Inserting user into local DB with ID: {}", userToStore.get("id"));
       users.insertUser(userToStore);
@@ -296,9 +299,9 @@ public ResponseEntity<Map<String, Object>> updateUser(
     try {
 
 
-        // Validation: Check if user exists in DB
+        // Check if user exists in DB
        Optional<Map<String, Object>> existingUserOpt = users.findById(id);
-        if (existingUserOpt.isEmpty()) {  // ← Use .isEmpty() instead of == null
+        if (existingUserOpt.isEmpty()) {  
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of(
                     "error", "User not found",
@@ -316,7 +319,7 @@ public ResponseEntity<Map<String, Object>> updateUser(
                 ));
         }
         
-        // Validation: Email format if provided
+        // Email format if provided
         if (updates.containsKey("email")) {
             String email = (String) updates.get("email");
             if (email != null && !email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
@@ -329,7 +332,7 @@ public ResponseEntity<Map<String, Object>> updateUser(
             }
         }
         
-        // Validation: Status values
+        // Status values
         if (updates.containsKey("status")) {
             String status = (String) updates.get("status");
             if (status != null && 
@@ -456,4 +459,128 @@ public ResponseEntity<Map<String, Object>> getUserGroups(@PathVariable("id") Str
         .body(Map.of("error", "Failed to get user groups", "message", e.getMessage()));
   }
 }
+
+@PostMapping("/{id}/groups")
+public ResponseEntity<Map<String, Object>> addUserToGroups(
+    @PathVariable("id") String id,
+    @RequestBody Map<String, Object> request
+) {
+    log.info("POST /users/{}/groups - {}", id, request);
+    
+    try {
+        Optional<Map<String, Object>> user = users.findById(id);
+        if (user.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "User not found", "id", id));
+        }
+        
+        List<String> groupIds = (List<String>) request.get("groupIds");
+        
+        if (groupIds == null || groupIds.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", "groupIds array is required and must not be empty"));
+        }
+        
+        // Add user to each group in IAS
+        List<String> added = new ArrayList<>();
+        List<String> failed = new ArrayList<>();
+        
+        for (String groupId : groupIds) {
+            log.info("Adding user {} to group {}", id, groupId);
+            
+            // addGroupMembers(groupId, List<userIds>)
+            // We're adding ONE user to ONE group
+            HttpResponse<String> iasResponse = scimClient.addGroupMembers(groupId, List.of(id));
+            
+            log.info("IAS Response status: {}", iasResponse.statusCode());
+            log.info("IAS Response body: {}", iasResponse.body());
+            
+            if (iasResponse.statusCode() < 200 || iasResponse.statusCode() >= 300) {
+                log.error("Failed to add user to group in IAS: {} - {}", iasResponse.statusCode(), iasResponse.body());
+                failed.add(groupId);
+            } else {
+                log.info("User {} successfully added to group {}", id, groupId);
+                added.add(groupId);
+                
+                // 2. Add to DB
+                if (!users.isUserInGroup(id, groupId)) {
+                    users.addUserToGroup(id, groupId);
+                }
+            }
+        }
+        
+        return ResponseEntity.ok(Map.of(
+            "userId", id,
+            "added", added,
+            "failed", failed
+        ));
+        
+    } catch (Exception e) {
+        log.error("Error adding user to groups: " + id, e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(Map.of("error", "Failed to add user to groups", "message", e.getMessage()));
+    }
+}
+
+@DeleteMapping("/{id}/groups")
+public ResponseEntity<Map<String, Object>> removeUserFromGroups(
+    @PathVariable("id") String id,
+    @RequestBody Map<String, Object> request
+) {
+    log.info("DELETE /users/{}/groups - {}", id, request);
+    
+    try {
+        Optional<Map<String, Object>> user = users.findById(id);
+        if (user.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "User not found", "id", id));
+        }
+        
+        List<String> groupIds = (List<String>) request.get("groupIds");
+        
+        if (groupIds == null || groupIds.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", "groupIds array is required and must not be empty"));
+        }
+        
+        // 1. Remove user from each group in IAS
+        List<String> removed = new ArrayList<>();
+        List<String> failed = new ArrayList<>();
+        
+        for (String groupId : groupIds) {
+            log.info("Removing user {} from group {}", id, groupId);
+            
+            // removeGroupMember(groupId, userId)
+            HttpResponse<String> iasResponse = scimClient.removeGroupMember(groupId, id);
+            
+            log.info("IAS Response status: {}", iasResponse.statusCode());
+            log.info("IAS Response body: {}", iasResponse.body());
+            
+            if (iasResponse.statusCode() < 200 || iasResponse.statusCode() >= 300) {
+                log.error("Failed to remove user from group in IAS: {} - {}", iasResponse.statusCode(), iasResponse.body());
+                failed.add(groupId);
+            } else {
+                log.info("User {} successfully removed from group {}", id, groupId);
+                removed.add(groupId);
+                
+                // 2. Remove from DB
+                users.removeUserFromGroup(id, groupId);
+            }
+        }
+        
+        return ResponseEntity.ok(Map.of(
+            "userId", id,
+            "removed", removed,
+            "failed", failed
+        ));
+        
+    } catch (Exception e) {
+        log.error("Error removing user from groups: " + id, e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(Map.of("error", "Failed to remove user from groups", "message", e.getMessage()));
+    }
+}
+
+
+
 }

@@ -276,42 +276,45 @@ public class GroupsController {
     }
   }
 
-  /**
-   * DELETE /groups/{id}/members/{userId} - Remove member (IAS first, then DB)
-   */
-  @DeleteMapping("/{id}/members/{userId}")
-  public ResponseEntity<Map<String, Object>> removeGroupMember(
-      @PathVariable("id") String id,
-      @PathVariable("userId") String userId
-  ) {
-    log.info("DELETE /groups/{}/members/{}", id, userId);
-    
-    try {
-      Optional<Map<String, Object>> group = groupRepository.findById(id);
-      if (group.isEmpty()) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(Map.of("error", "Group not found", "id", id));
-      }
-      
-      // Check if user is a member
-      if (!groupMemberRepository.isMember(id, userId)) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(Map.of("error", "User is not a member of this group", "groupId", id, "userId", userId));
-      }
-      
-      // Remove from IAS first, then DB
-      groupService.removeMember(id, userId);
-      
-      return ResponseEntity.ok(Map.of(
-          "message", "Member removed successfully",
-          "groupId", id,
-          "userId", userId
-      ));
-      
-    } catch (Exception e) {
-      log.error("Error removing group member: group={}, user={}", id, userId, e);
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-          .body(Map.of("error", "Failed to remove group member", "message", e.getMessage()));
+
+/**
+ * DELETE /groups/{id}/members - Remove multiple members (IAS first, then DB)
+ */
+@DeleteMapping("/{id}/members")
+public ResponseEntity<Map<String, Object>> removeGroupMembers(
+    @PathVariable("id") String id,
+    @RequestBody Map<String, Object> request
+) {
+  log.info("DELETE /groups/{}/members - {}", id, request);
+  
+  try {
+    Optional<Map<String, Object>> group = groupRepository.findById(id);
+    if (group.isEmpty()) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+          .body(Map.of("error", "Group not found", "id", id));
     }
+    
+    List<String> userIds = (List<String>) request.get("userIds");
+    
+    if (userIds == null || userIds.isEmpty()) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+          .body(Map.of("error", "userIds array is required and must not be empty"));
+    }
+    
+    // Remove from IAS first, then DB
+    groupService.removeMembers(id, userIds);
+    
+    return ResponseEntity.ok(Map.of(
+        "message", "Members removed successfully",
+        "groupId", id,
+        "userIds", userIds
+    ));
+    
+  } catch (Exception e) {
+    log.error("Error removing group members: group={}", id, e);
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(Map.of("error", "Failed to remove group members", "message", e.getMessage()));
   }
+}
+
 }

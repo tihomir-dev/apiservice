@@ -353,4 +353,25 @@ public class GroupService {
         .replaceAll("[^a-z0-9]+", "-")
         .replaceAll("^-|-$", "");
   }
+
+@Transactional
+public void removeMembers(String groupId, List<String> userIds) throws Exception {
+  log.info("Removing members from group: groupId={}, userIds={}", groupId, userIds);
+
+  // 1. Remove from IAS first
+  for (String userId : userIds) {
+    HttpResponse<String> iasResponse = scimClient.removeGroupMember(groupId, userId);
+
+    if (iasResponse.statusCode() < 200 || iasResponse.statusCode() >= 300) {
+      throw new RuntimeException("Failed to remove member in IAS: userId=" + userId + ", statusCode=" + iasResponse.statusCode() + " - " + iasResponse.body());
+    }
+
+    log.info("Member removed from IAS: groupId={}, userId={}", groupId, userId);
+  }
+
+  // 2. Remove from DB
+  groupMemberRepository.removeMembers(groupId, userIds);
+
+  log.info("Members removed from DB: groupId={}, userIds={}", groupId, userIds);
+}
 }

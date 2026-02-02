@@ -25,3 +25,21 @@ curl --http1.1 -i -X POST \
 
 ### Sync Groups
 curl -X POST "https://945d5126trial-dev-apiservice-srv.cfapps.us10-001.hana.ondemand.com/groups/sync" 
+
+### Assign groups to a user
+curl -i -X POST \
+  "https://945d5126trial-dev-apiservice-srv.cfapps.us10-001.hana.ondemand.com/users/49fd5788-f9f1-4017-84c7-be05b9265b98/groups" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "groupIds": ["ed616fa3-d39b-4c90-9099-9720b9ab021b", "82fb7858-588f-408d-9fd8-6139e963bace"]
+  }'
+
+### Unassign members from a group
+  curl -i -X DELETE \
+  "https://945d5126trial-dev-apiservice-srv.cfapps.us10-001.hana.ondemand.com/groups/1c51eb79-5034-437e-a85f-13d37bb615b0/members" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "userIds": ["261da5c7-cc4a-4cb3-9a2c-fc8bb1f393c1", "dbf7d4fa-71dd-46ba-af9f-b2e2d79bf2ad"]
+  }'
