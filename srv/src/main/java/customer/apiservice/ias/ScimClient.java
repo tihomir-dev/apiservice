@@ -57,6 +57,8 @@ public class ScimClient {
 
   public HttpResponse<String> getUsers(String query) {
     try {
+      //REVIEW: extract token and base initialization in a private method just so you can remove redundant repetition in every method- 
+      //cleans things up
       String token = tokenService.getAccessToken();
 
       String base =
@@ -202,6 +204,7 @@ public class ScimClient {
   /** Builds SCIM JSON for user creation */
   private String buildScimUserJson(Map<String, Object> userData) {
     StringBuilder json = new StringBuilder();
+    //You can use Jackson ObjectMapper , string builder for a json is risky and prone to fail if not careful. 
     json.append("{");
 
     // Required: schemas
@@ -243,6 +246,7 @@ public class ScimClient {
 
     // Status (active true/false based on ACTIVE/INACTIVE)
     String status = (String) userData.get("status");
+    //REVIEW: null handling?
     boolean active = !"INACTIVE".equalsIgnoreCase(status);
     json.append("\"active\":").append(active);
 
@@ -464,6 +468,7 @@ public class ScimClient {
 
       return objectMapper.readValue(responseBody, Map.class);
     } else {
+      //REVIEW: You can return an error HTTPResponse instead instead of just throwing
       throw new RuntimeException(
           "PATCH failed with status " + response.statusCode() + ": " + response.body());
     }
@@ -630,6 +635,8 @@ public class ScimClient {
       return http.send(req, HttpResponse.BodyHandlers.ofString());
 
     } catch (Exception e) {
+      //SimpleString response may cause issues with methods from different libraries excepting an actual HttpResponse - try to return a 
+      //wrapper object with status and body
       return new SimpleStringResponse(
           500,
           "{\"error\":\"SCIM update group failed\",\"message\":\""
