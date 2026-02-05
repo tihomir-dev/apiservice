@@ -52,7 +52,8 @@ public class IasTokenService {
       String basic =
           Base64.getEncoder()
               .encodeToString((clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
-
+      
+      //REVIEW: I would add a .timeout(Duration.ofSeconds(30)) here to ensure no thread starvation
       HttpRequest req =
           HttpRequest.newBuilder()
               .uri(URI.create(tokenUrl))
