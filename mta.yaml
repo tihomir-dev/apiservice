@@ -3,7 +3,6 @@ ID: apiservice
 version: 1.0.0
 
 modules:
-  # Backend Service - Uses Java ✅
   - name: apiservice-srv
     type: java
     path: srv
@@ -23,7 +22,6 @@ modules:
     requires:
       - name: apiservice-hdi
 
-  # Database Deployer - Uses Node.js (default) ✅
   - name: apiservice-db-deployer
     type: hdb
     path: db
