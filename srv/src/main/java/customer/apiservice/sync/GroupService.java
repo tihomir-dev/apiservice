@@ -34,7 +34,7 @@ public class GroupService {
     this.groupMemberRepository = groupMemberRepository;
     this.syncNotificationService = syncNotificationService;
   }
-
+  //REVIEW: Split the whole thing into chunks for the different types of changes and make the main method just a step by step
   /** Sync all groups from IAS to DB tracks changes (compares with DB) */
   @Transactional
   public Map<String, Object> syncGroupsFromIas() {
@@ -123,6 +123,7 @@ public class GroupService {
           }
 
         } catch (Exception e) {
+          //REVIEW: Append an id or something - have to know where we're experiencing the issue when tracing logs
           log.error("Error syncing group", e);
           errors++;
         }
@@ -134,7 +135,7 @@ public class GroupService {
           actualChanges,
           skipped,
           errors);
-
+    //REVIEW: Why is updated always 0
       Map<String, Object> result =
           Map.of(
               "success", true,
@@ -198,6 +199,7 @@ public class GroupService {
   }
 
   private boolean nullSafeEquals(Object a, Object b) {
+    //REVIEW: .equals should already be null-safe
     if (a == null && b == null) return true;
     if (a == null || b == null) return false;
     return a.equals(b);
@@ -212,6 +214,7 @@ public class GroupService {
     HttpResponse<String> iasResponse = scimClient.createGroup(name, displayName, description);
 
     if (iasResponse.statusCode() < 200 || iasResponse.statusCode() >= 300) {
+      //REVIEW: Specify more clear exception types
       throw new RuntimeException(
           "Failed to create group in IAS: "
               + iasResponse.statusCode()
@@ -355,7 +358,7 @@ public class GroupService {
   @Transactional
   public void removeMember(String groupId, String userId) throws Exception {
     log.info("Removing member from group: groupId={}, userId={}", groupId, userId);
-
+    
     HttpResponse<String> iasResponse = scimClient.removeGroupMember(groupId, userId);
 
     if (iasResponse.statusCode() < 200 || iasResponse.statusCode() >= 300) {
@@ -378,6 +381,7 @@ public class GroupService {
     log.info("Removing members from group: groupId={}, userIds={}", groupId, userIds);
 
     for (String userId : userIds) {
+      //REVIEW:If IAS possesses batch removals, use that instead?
       HttpResponse<String> iasResponse = scimClient.removeGroupMember(groupId, userId);
 
       if (iasResponse.statusCode() < 200 || iasResponse.statusCode() >= 300) {
@@ -398,6 +402,7 @@ public class GroupService {
     log.info("Members removed from DB: groupId={}, userIds={}", groupId, userIds);
   }
 
+  //REVIEW: Unused code
   private String generateNameFromDisplayName(String displayName) {
     return displayName.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
   }
