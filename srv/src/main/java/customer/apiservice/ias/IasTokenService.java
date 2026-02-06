@@ -38,7 +38,7 @@ public class IasTokenService {
     }
     return fetchNewToken();
   }
-
+  //REVIEW: You can isolate the 30 here as a constant private static final long REFRESH_OFFSET_SECONDS = 30;
   private synchronized String fetchNewToken() {
     if (cachedToken != null
         && expiresAt != null
@@ -63,6 +63,7 @@ public class IasTokenService {
               .POST(HttpRequest.BodyPublishers.ofString(body))
               .build();
 
+      //REVIEW: Add a timeout here , this could block the service
       HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
       if (resp.statusCode() / 100 != 2) {
@@ -73,6 +74,7 @@ public class IasTokenService {
       String token = json.path("access_token").asText(null);
       long expiresIn = json.path("expires_in").asLong(300);
 
+      //REVIEW: My advice here is to find a more concise exception type - runtime doesn't immediately tell me what has gone wrong
       if (token == null || token.isBlank()) {
         throw new RuntimeException("IAS token response missing access_token: " + resp.body());
       }
