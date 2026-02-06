@@ -6,7 +6,12 @@ import org.springframework.http.ResponseEntity;
 public class FieldValidator {
 
   public static ResponseEntity<Map<String, Object>> checkEmail(String email) {
+    //REVIEW - in this instance add a null check and .isBlank check prior to the .matches -  If it's a null value, it will throw when trying to 
+    //match nothing
 
+    //REVIEW: You can create a Pattern Constant 
+    //private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"); and use it wherever you
+    //want to validate an email value
     if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
       return ResponseEntity.badRequest()
           .body(
@@ -20,7 +25,7 @@ public class FieldValidator {
   }
 
   public static ResponseEntity<Map<String, Object>> checkStatus(String status) {
-
+    //REVIEW: possible nullPointerException - check if it's null or blank first before you try the equals
     if (!status.equalsIgnoreCase("ACTIVE") && !status.equalsIgnoreCase("INACTIVE")) {
       return ResponseEntity.badRequest()
           .body(
@@ -45,6 +50,7 @@ public class FieldValidator {
             .body(Map.of("error", fieldName + " is required", "field", fieldName));
       }
 
+      //REVIEW: You don't need a nested if here, just append with && the check for empty strings to the first if
       if (value instanceof String) {
         String str = (String) value;
         if (str.trim().isEmpty()) {
