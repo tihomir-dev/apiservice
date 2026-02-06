@@ -33,6 +33,7 @@ public class GroupsController {
   /** GET /groups - List all groups (from DB) */
   @GetMapping
   public ResponseEntity<Map<String, Object>> listGroups(
+    //REVIEW: Check for negative or 0 values and sanitize (either return exception or normalize to 1)
       @RequestParam(name = "startIndex", required = false, defaultValue = "1") int startIndex,
       @RequestParam(name = "count", defaultValue = "100") int count,
       @RequestParam(name = "search", required = false) String search) {
@@ -178,6 +179,7 @@ public class GroupsController {
   public ResponseEntity<Map<String, Object>> getGroupMembers(@PathVariable("id") String id) {
 
     try {
+      //REVIEW: This comes up 4 times in the class, maybe move the check in a helper method
       Optional<Map<String, Object>> group = groupRepository.findById(id);
       if (group.isEmpty()) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -188,6 +190,7 @@ public class GroupsController {
 
       Map<String, Object> response = new HashMap<>();
       response.put("groupId", id);
+      //REVIEW: You can use constants for literal column names of the TABLE for better maintainability
       response.put("groupName", group.get().get("NAME"));
       response.put("totalMembers", members.size());
       response.put("members", members);
@@ -205,6 +208,7 @@ public class GroupsController {
   @PostMapping("/{id}/members")
   public ResponseEntity<Map<String, Object>> addGroupMembers(
       @PathVariable("id") String id, @RequestBody Map<String, Object> request) {
+    //REVIEW: If the request contains sensitive info like emails , this may be seen as a security concern
     log.info("POST /groups/{}/members - {}", id, request);
 
     try {
@@ -244,7 +248,8 @@ public class GroupsController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(Map.of("error", "Group not found", "id", id));
       }
-
+      //REVIEW: For the post endpoint you use FieldValidator, why do you explicitly check the field here ? I would suggest standartizing it
+      //so everything checks and operates based on the same principal
       List<String> userIds = (List<String>) request.get("userIds");
 
       if (userIds == null || userIds.isEmpty()) {
@@ -254,7 +259,7 @@ public class GroupsController {
 
       // Remove from IAS first, then DB
       groupService.removeMembers(id, userIds);
-
+      //REVIEW: make the structure of your response the same as errors : In this case "success", "Members removed successfully"...etc.etc.
       return ResponseEntity.ok(
           Map.of(
               "message", "Members removed successfully",
