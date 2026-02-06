@@ -307,7 +307,7 @@ public class ScimClient {
     String token = tokenService.getAccessToken();
 
     List<Map<String, Object>> operations = new ArrayList<>();
-
+    //REVIEW: Check if updates has any data, otherwise you're sending empty PATCHes 
     // Handle loginName (userName)
     if (updates.containsKey("loginName")) {
       Object loginNameValue = updates.get("loginName");
@@ -468,6 +468,7 @@ public class ScimClient {
 
       return objectMapper.readValue(responseBody, Map.class);
     } else {
+      //REVIEW: You can retry if the exception is 401 - just fetch a new token if the last one was not properly initialized or it has expired
       //REVIEW: You can return an error HTTPResponse instead instead of just throwing
       throw new RuntimeException(
           "PATCH failed with status " + response.statusCode() + ": " + response.body());
@@ -478,7 +479,7 @@ public class ScimClient {
   public HttpResponse<String> deleteUser(String userId) {
     try {
       String token = tokenService.getAccessToken();
-
+      //REVIEW: Extract this in a method maybe? It repeats in every method and makes one slight adjustment to the string if needed a pain
       String base =
           scimBaseUrl.endsWith("/")
               ? scimBaseUrl.substring(0, scimBaseUrl.length() - 1)
@@ -492,7 +493,7 @@ public class ScimClient {
               .header("Authorization", "Bearer " + token)
               .DELETE()
               .build();
-
+      //REVIEW: Add timeouts to http.sends
       return http.send(req, HttpResponse.BodyHandlers.ofString());
 
     } catch (Exception e) {
@@ -545,7 +546,7 @@ public class ScimClient {
               : scimBaseUrl;
 
       URI uri = URI.create(base + "/Groups");
-
+      //REVIEW: Better use JacksonMaps or POJOs for such Json building
       // Build SCIM JSON
       String scimJson =
           "{\"schemas\":[\"urn:ietf:params:scim:schemas:core:2.0:Group\",\"urn:sap:cloud:scim:schemas:extension:custom:2.0:Group\"],"
