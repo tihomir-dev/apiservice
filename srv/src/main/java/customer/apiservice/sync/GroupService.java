@@ -35,10 +35,17 @@ public class GroupService {
     this.syncNotificationService = syncNotificationService;
   }
 
-  /** Sync all groups from IAS to DB tracks changes (compares with DB) */
+  /** Sync all groups from IAS to DB with detailed change tracking and deletion handling */
   @Transactional
   public Map<String, Object> syncGroupsFromIas() {
     log.info("=== Starting group sync from IAS ===");
+
+    int fetched = 0;
+    int inserted = 0;
+    int updated = 0;
+    int deleted = 0;
+    int skipped = 0;
+    int errors = 0;
 
     try {
       HttpResponse<String> response = scimClient.getGroups();
@@ -58,24 +65,31 @@ public class GroupService {
         iasGroups = new ArrayList<>();
       }
 
-      // OPTIMIZATION: Load all groups from DB once at the start
+      // Load all groups from DB once at the start
       Map<String, Map<String, Object>> dbGroups = loadAllGroupsFromDb();
+      Set<String> iasGroupIds = new HashSet<>();
+      List<Map<String, Object>> detailedChanges = new ArrayList<>();
+
       log.info("Loaded {} groups from DB", dbGroups.size());
 
-      int totalFetched = iasGroups.size();
-      int actualChanges = 0;
-      int skipped = 0;
-      int errors = 0;
+      fetched = iasGroups.size();
 
       for (Map<String, Object> iasGroup : iasGroups) {
         try {
           String id = (String) iasGroup.get("id");
           String displayName = (String) iasGroup.get("displayName");
 
+          @SuppressWarnings("unchecked")
           Map<String, Object> ext = (Map<String, Object>) iasGroup.get(CUSTOM_GROUP_EXT);
 
           String name = ext != null ? (String) ext.get("name") : null;
           String description = ext != null ? (String) ext.get("description") : null;
+          Object iasLastModified =
+              iasGroup.get("meta") != null
+                  ? ((Map<String, Object>) iasGroup.get("meta")).get("lastModified")
+                  : null;
+
+          iasGroupIds.add(id);
 
           // Check if group exists
           if (!dbGroups.containsKey(id)) {
@@ -85,23 +99,27 @@ public class GroupService {
             group.put("name", name);
             group.put("displayName", displayName);
             group.put("description", description);
-            group.put(
-                "iasLastModified",
-                iasGroup.get("meta") != null
-                    ? ((Map<String, Object>) iasGroup.get("meta")).get("lastModified")
-                    : null);
+            group.put("iasLastModified", iasLastModified);
 
             groupRepository.insertGroup(group);
-            actualChanges++;
-            log.debug("Inserted new group: {}", id);
+
+            Map<String, Object> change = new HashMap<>();
+            change.put("groupId", id);
+            change.put("action", "INSERTED");
+            change.put("displayName", displayName);
+            change.put("timestamp", System.currentTimeMillis());
+            detailedChanges.add(change);
+
+            inserted++;
+            log.debug("Inserted new group: {} ({})", id, displayName);
 
           } else {
             // existing group - check if it actually changed
             Map<String, Object> dbGroup = dbGroups.get(id);
+            GroupChangeInfo changeInfo =
+                checkGroupChanges(dbGroup, displayName, description);
 
-            boolean hasChanged = groupHasChanged(dbGroup, displayName, description);
-
-            if (!hasChanged) {
+            if (changeInfo.changedFields.isEmpty()) {
               skipped++;
               log.debug("Group not changed, skipping: {}", id);
               continue;
@@ -111,40 +129,76 @@ public class GroupService {
             Map<String, Object> updates = new HashMap<>();
             updates.put("displayName", displayName);
             updates.put("description", description);
-            updates.put(
-                "iasLastModified",
-                iasGroup.get("meta") != null
-                    ? ((Map<String, Object>) iasGroup.get("meta")).get("lastModified")
-                    : null);
+            updates.put("iasLastModified", iasLastModified);
 
             groupRepository.updateGroup(id, updates);
-            actualChanges++;
-            log.debug("Updated group: {}", id);
+
+            Map<String, Object> change = new HashMap<>();
+            change.put("groupId", id);
+            change.put("action", "UPDATED");
+            change.put("displayName", displayName);
+            change.put("changedFields", new ArrayList<>(changeInfo.changedFields));
+            change.put("timestamp", System.currentTimeMillis());
+            detailedChanges.add(change);
+
+            updated++;
+            log.debug("Updated group: {} (changed fields: {})", id, changeInfo.changedFields);
           }
 
         } catch (Exception e) {
-          log.error("Error syncing group", e);
+          log.error("Error syncing group from IAS", e);
           errors++;
         }
       }
 
+      // Handle deletions: groups in DB but not in IAS
+      for (String dbGroupId : dbGroups.keySet()) {
+        if (!iasGroupIds.contains(dbGroupId)) {
+          try {
+            // Group was deleted from IAS - completely remove from DB
+            // First remove all members from this group
+            groupMemberRepository.removeAllMembers(dbGroupId);
+            // Then delete the group
+            groupRepository.deleteGroup(dbGroupId);
+
+            Map<String, Object> change = new HashMap<>();
+            change.put("groupId", dbGroupId);
+            change.put("action", "DELETED");
+            change.put("displayName", dbGroups.get(dbGroupId).get("DISPLAY_NAME"));
+            change.put("timestamp", System.currentTimeMillis());
+            detailedChanges.add(change);
+
+            deleted++;
+            log.debug("Deleted group from DB: {}", dbGroupId);
+
+          } catch (Exception e) {
+            log.error("Error deleting group: {}", dbGroupId, e);
+            errors++;
+          }
+        }
+      }
+
       log.info(
-          "=== Group sync completed: fetched={}, changes={}, skipped={}, errors={} ===",
-          totalFetched,
-          actualChanges,
+          "=== Group sync completed: fetched={}, inserted={}, updated={}, deleted={}, skipped={}, errors={} ===",
+          fetched,
+          inserted,
+          updated,
+          deleted,
           skipped,
           errors);
 
-      Map<String, Object> result =
-          Map.of(
-              "success", true,
-              "totalGroups", totalFetched,
-              "inserted", actualChanges,
-              "updated", 0,
-              "failed", errors);
+      Map<String, Object> result = new HashMap<>();
+      result.put("fetched", fetched);
+      result.put("inserted", inserted);
+      result.put("updated", updated);
+      result.put("deleted", deleted);
+      result.put("skipped", skipped);
+      result.put("failed", errors);
+      result.put("totalGroups", fetched);
+      result.put("detailedChanges", detailedChanges);
 
       // Notify about actual changes
-      if (actualChanges > 0) {
+      if ((inserted + updated + deleted) > 0) {
         syncNotificationService.notifyGroupSync(result);
       }
 
@@ -158,12 +212,6 @@ public class GroupService {
 
   /** Load all groups from DB */
   private Map<String, Map<String, Object>> loadAllGroupsFromDb() {
-    String query =
-        """
-        SELECT "ID", "DISPLAY_NAME", "DESCRIPTION"
-        FROM "GROUPS"
-        """;
-
     Map<String, Map<String, Object>> groups = new HashMap<>();
 
     try {
@@ -180,27 +228,34 @@ public class GroupService {
     return groups;
   }
 
-  /** Check if group changed */
-  private boolean groupHasChanged(
+  /** Check if group changed and return what fields changed */
+  private GroupChangeInfo checkGroupChanges(
       Map<String, Object> dbGroup, String newDisplayName, String newDescription) {
+    GroupChangeInfo info = new GroupChangeInfo();
+
     String dbDisplayName = (String) dbGroup.get("DISPLAY_NAME");
     String dbDescription = (String) dbGroup.get("DESCRIPTION");
 
     if (!nullSafeEquals(newDisplayName, dbDisplayName)) {
-      return true;
+      info.changedFields.add("displayName");
     }
 
     if (!nullSafeEquals(newDescription, dbDescription)) {
-      return true;
+      info.changedFields.add("description");
     }
 
-    return false; // No changes
+    return info;
   }
 
   private boolean nullSafeEquals(Object a, Object b) {
     if (a == null && b == null) return true;
     if (a == null || b == null) return false;
     return a.equals(b);
+  }
+
+  /** Helper class to track group changes */
+  private static class GroupChangeInfo {
+    Set<String> changedFields = new HashSet<>();
   }
 
   /** Create: IAS first, then DB */
@@ -267,6 +322,7 @@ public class GroupService {
     String responseBody = iasResponse.body();
 
     if (responseBody != null && !responseBody.trim().isEmpty()) {
+      @SuppressWarnings("unchecked")
       Map<String, Object> iasGroup = objectMapper.readValue(responseBody, Map.class);
 
       if (iasGroup.get("meta") != null) {
@@ -317,7 +373,7 @@ public class GroupService {
     log.info("Group deleted from DB: ID={}", id);
   }
 
-  /** add members: IAS first, then DB */
+  /** Add members: IAS first, then DB */
   @Transactional
   public Map<String, Object> addMembers(String groupId, List<String> userIds) throws Exception {
     log.info("Adding members to group: groupId={}, userIds={}", groupId, userIds);

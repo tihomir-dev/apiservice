@@ -50,10 +50,8 @@ public class UserGroupAssignmentService {
             "Failed to get users from IAS: " + response.statusCode() + " - " + response.body());
       }
 
-      @SuppressWarnings("unchecked")
       Map<String, Object> iasData = objectMapper.readValue(response.body(), Map.class);
 
-      @SuppressWarnings("unchecked")
       List<Map<String, Object>> iasUsers = (List<Map<String, Object>>) iasData.get("Resources");
 
       if (iasUsers == null) {
@@ -68,38 +66,55 @@ public class UserGroupAssignmentService {
         try {
           String userId = (String) iasUser.get("id");
 
-          @SuppressWarnings("unchecked")
           List<Map<String, Object>> iasGroups = (List<Map<String, Object>>) iasUser.get("groups");
 
-          List<String> iasGroupIds = new ArrayList<>();
+          Set<String> currentIasAssignments = new HashSet<>();
           if (iasGroups != null) {
             for (Map<String, Object> group : iasGroups) {
               String groupId = (String) group.get("value");
               if (groupId != null) {
-                iasGroupIds.add(groupId);
+                currentIasAssignments.add(groupId);
               }
             }
           }
 
-          // Check if user's group assignments changed
-          List<String> dbGroupIds = dbUserGroups.getOrDefault(userId, new ArrayList<>());
+          // Get current DB assignments for this user
+          List<String> dbGroupIdsList = dbUserGroups.getOrDefault(userId, new ArrayList<>());
+          Set<String> currentDbAssignments = new HashSet<>(dbGroupIdsList);
 
-          if (!groupAssignmentsMatch(iasGroupIds, dbGroupIds)) {
-            // Assignments changed - remove old and add new
+          // Calculate assignments to add and remove
+          Set<String> assignmentsToAdd = new HashSet<>(currentIasAssignments);
+          assignmentsToAdd.removeAll(currentDbAssignments);
+
+          Set<String> assignmentsToRemove = new HashSet<>(currentDbAssignments);
+          assignmentsToRemove.removeAll(currentIasAssignments);
+
+          // Only update if there are changes
+          if (!assignmentsToAdd.isEmpty() || !assignmentsToRemove.isEmpty()) {
             Map<String, Object> change = new HashMap<>();
-            change.put("userId", userId);
-            change.put("previousGroups", new ArrayList<>(dbGroupIds));
-            change.put("newGroups", new ArrayList<>(iasGroupIds));
+            change.put("user", userId);
+            change.put("addedGroups", new ArrayList<>(assignmentsToAdd));
+            change.put("removedGroups", new ArrayList<>(assignmentsToRemove));
+            change.put("finalGroups", new ArrayList<>(currentIasAssignments));
             change.put("timestamp", System.currentTimeMillis());
             detailedChanges.add(change);
-            groupMemberRepository.removeUserFromAllGroups(userId);
 
-            for (String groupId : iasGroupIds) {
+            // Remove old assignments
+            for (String groupId : assignmentsToRemove) {
+              groupMemberRepository.removeMember(groupId, userId);
+            }
+
+            // Add new assignments
+            for (String groupId : assignmentsToAdd) {
               groupMemberRepository.addMember(groupId, userId);
             }
 
             actualChanges++;
-            log.debug("Updated group assignments for user: {}", userId);
+            log.debug(
+                "Updated group assignments for user: {} (added: {}, removed: {})",
+                userId,
+                assignmentsToAdd.size(),
+                assignmentsToRemove.size());
           }
 
           totalProcessed++;
@@ -116,13 +131,12 @@ public class UserGroupAssignmentService {
           actualChanges,
           errors);
 
-      Map<String, Object> result =
-          Map.of(
-              "success", true,
-              "totalUsers", totalProcessed,
-              "assignmentChanges", actualChanges,
-              "failed", errors,
-              "detailedChanges", detailedChanges);
+      Map<String, Object> result = new HashMap<>();
+      result.put("success", true);
+      result.put("totalUsers", totalProcessed);
+      result.put("assignmentChanges", actualChanges);
+      result.put("failed", errors);
+      result.put("detailedChanges", detailedChanges);
 
       if (actualChanges > 0) {
         syncNotificationService.notifyUserGroupAssignmentSync(result);
@@ -140,7 +154,7 @@ public class UserGroupAssignmentService {
    * Sync members assigned to each group from IAS to DB Fetches all groups and their members, then
    * updates the database
    */
-  @Transactional
+/*   @Transactional
   public Map<String, Object> syncGroupMembers() {
     log.info("=== Starting group members sync from IAS ===");
 
@@ -152,10 +166,8 @@ public class UserGroupAssignmentService {
             "Failed to get groups from IAS: " + response.statusCode() + " - " + response.body());
       }
 
-      @SuppressWarnings("unchecked")
       Map<String, Object> iasData = objectMapper.readValue(response.body(), Map.class);
 
-      @SuppressWarnings("unchecked")
       List<Map<String, Object>> iasGroups = (List<Map<String, Object>>) iasData.get("Resources");
 
       if (iasGroups == null) {
@@ -176,7 +188,7 @@ public class UserGroupAssignmentService {
         try {
           String groupId = (String) iasGroup.get("id");
 
-          @SuppressWarnings("unchecked")
+        
           List<Map<String, Object>> iasMembers =
               (List<Map<String, Object>>) iasGroup.get("members");
 
@@ -256,7 +268,7 @@ public class UserGroupAssignmentService {
       log.error("Failed to sync group members from IAS", e);
       return Map.of("success", false, "error", e.getMessage());
     }
-  }
+  } */
 
   /** Returns a map of userId - List of groupIds */
   private Map<String, List<String>> loadAllUserGroupAssignmentsFromDb() {
