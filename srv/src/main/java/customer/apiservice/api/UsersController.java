@@ -149,7 +149,7 @@ public class UsersController {
       Map<String, Object> userToStore = extractUserDataFromScim(iasUser);
       log.info("Inserting user into local DB with ID: {}", userToStore.get("id"));
       users.insertUser(userToStore);
-
+      //REVIEW: In the case of a DB fail, the IAS persisted data isn't rolled back I think - go over all your other persisting methods 
       log.info("User created successfully: {}", userToStore.get("id"));
       return ResponseEntity.status(201).body(userToStore);
 

@@ -71,6 +71,12 @@ public class UserGroupAssignmentService {
           @SuppressWarnings("unchecked")
           List<Map<String, Object>> iasGroups = (List<Map<String, Object>>) iasUser.get("groups");
 
+          //REVIEW: Have a read on streams  - here's an example as to how you can simplify this: 
+          /*
+          List<String> iasGroupIds = Optional.ofNullable(iasGroups).orElse(List.of())
+          .stream().map(g -> (String) g.get("value"))
+          .filter(Objects::nonNull).toList();
+          */
           List<String> iasGroupIds = new ArrayList<>();
           if (iasGroups != null) {
             for (Map<String, Object> group : iasGroups) {
@@ -92,6 +98,9 @@ public class UserGroupAssignmentService {
             change.put("newGroups", new ArrayList<>(iasGroupIds));
             change.put("timestamp", System.currentTimeMillis());
             detailedChanges.add(change);
+
+            //REVIEW: Here you are technically guaranteed to always be persisting the correct set of data, but it is not optimal for performance
+            //Try playing with some sort of delta mechanism to only check for the changes made and removing/inserting based on that
             groupMemberRepository.removeUserFromAllGroups(userId);
 
             for (String groupId : iasGroupIds) {
@@ -305,6 +314,8 @@ public class UserGroupAssignmentService {
   }
 
   /** Compare two lists of IDs to see if they match */
+  //n^2 complexity -> just use return new HashSet<>(iasIds).equals(new HashSet<>(dbIds)); Sets don't check for ordering, they just check if there's an equal
+  //entry matching each in both sets
   private boolean groupAssignmentsMatch(List<String> iasIds, List<String> dbIds) {
     if (iasIds.size() != dbIds.size()) {
       return false;

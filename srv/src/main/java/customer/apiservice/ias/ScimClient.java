@@ -57,6 +57,8 @@ public class ScimClient {
 
   public HttpResponse<String> getUsers(String query) {
     try {
+      //REVIEW: extract token and base initialization in a private method just so you can remove redundant repetition in every method- 
+      //cleans things up
       String token = tokenService.getAccessToken();
 
       String base =
@@ -202,6 +204,7 @@ public class ScimClient {
   /** Builds SCIM JSON for user creation */
   private String buildScimUserJson(Map<String, Object> userData) {
     StringBuilder json = new StringBuilder();
+    //You can use Jackson ObjectMapper , string builder for a json is risky and prone to fail if not careful. 
     json.append("{");
 
     // Required: schemas
@@ -243,6 +246,7 @@ public class ScimClient {
 
     // Status (active true/false based on ACTIVE/INACTIVE)
     String status = (String) userData.get("status");
+    //REVIEW: null handling?
     boolean active = !"INACTIVE".equalsIgnoreCase(status);
     json.append("\"active\":").append(active);
 
@@ -303,7 +307,7 @@ public class ScimClient {
     String token = tokenService.getAccessToken();
 
     List<Map<String, Object>> operations = new ArrayList<>();
-
+    //REVIEW: Check if updates has any data, otherwise you're sending empty PATCHes 
     // Handle loginName (userName)
     if (updates.containsKey("loginName")) {
       Object loginNameValue = updates.get("loginName");
@@ -464,6 +468,8 @@ public class ScimClient {
 
       return objectMapper.readValue(responseBody, Map.class);
     } else {
+      //REVIEW: You can retry if the exception is 401 - just fetch a new token if the last one was not properly initialized or it has expired
+      //REVIEW: You can return an error HTTPResponse instead instead of just throwing
       throw new RuntimeException(
           "PATCH failed with status " + response.statusCode() + ": " + response.body());
     }
@@ -473,7 +479,7 @@ public class ScimClient {
   public HttpResponse<String> deleteUser(String userId) {
     try {
       String token = tokenService.getAccessToken();
-
+      //REVIEW: Extract this in a method maybe? It repeats in every method and makes one slight adjustment to the string if needed a pain
       String base =
           scimBaseUrl.endsWith("/")
               ? scimBaseUrl.substring(0, scimBaseUrl.length() - 1)
@@ -487,7 +493,7 @@ public class ScimClient {
               .header("Authorization", "Bearer " + token)
               .DELETE()
               .build();
-
+      //REVIEW: Add timeouts to http.sends
       return http.send(req, HttpResponse.BodyHandlers.ofString());
 
     } catch (Exception e) {
@@ -540,7 +546,7 @@ public class ScimClient {
               : scimBaseUrl;
 
       URI uri = URI.create(base + "/Groups");
-
+      //REVIEW: Better use JacksonMaps or POJOs for such Json building
       // Build SCIM JSON
       String scimJson =
           "{\"schemas\":[\"urn:ietf:params:scim:schemas:core:2.0:Group\",\"urn:sap:cloud:scim:schemas:extension:custom:2.0:Group\"],"
@@ -630,6 +636,8 @@ public class ScimClient {
       return http.send(req, HttpResponse.BodyHandlers.ofString());
 
     } catch (Exception e) {
+      //SimpleString response may cause issues with methods from different libraries excepting an actual HttpResponse - try to return a 
+      //wrapper object with status and body
       return new SimpleStringResponse(
           500,
           "{\"error\":\"SCIM update group failed\",\"message\":\""

@@ -38,8 +38,9 @@ public class UserSyncService {
     int skipped = 0;
 
     //  Load ALL users from db at the start
-
+    //REVIEW: Could be problematic for large scale systems - I guess you can do paging and pull a 100 at a time from the db 
     Map<String, Map<String, Object>> dbUsers = loadAllUsersFromDb();
+    //REVIEW: log.info/debug?
     System.out.println("Loaded " + dbUsers.size() + " users from DB");
 
     int startIndex = 1;
@@ -215,7 +216,7 @@ public class UserSyncService {
     }
 
     Map<String, Object> dbUser = dbUsers.get(id);
-
+    //REVIEW: email?
     // string comparisons
     if (!nullSafeEquals(lastName, dbUser.get("LAST_NAME"))) return true;
     if (!nullSafeEquals(firstName, dbUser.get("FIRST_NAME"))) return true;
@@ -279,6 +280,7 @@ public class UserSyncService {
       """;
 
   private static String firstEmailCoreOrSap(JsonNode user) {
+    //REVIEW: Try doing this with a stream as practice - same for pickAddressCoreOrSap
     String core = firstEmailFromArray(user.path("emails"));
     if (!isBlank(core)) return core;
     JsonNode sap = user.path(SAP_EXT);

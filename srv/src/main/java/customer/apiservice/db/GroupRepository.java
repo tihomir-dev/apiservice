@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class GroupRepository {
-
+//REVIEW: Comments from other files still apply
   private static final Logger log = LoggerFactory.getLogger(GroupRepository.class);
   private final JdbcTemplate jdbc;
 
@@ -137,7 +137,28 @@ public class GroupRepository {
     List<Object> params = new ArrayList<>();
 
     boolean first = true;
+    //REVIEW: This is cumbersome to an extent and difficult to refactor down the line - Use a map like 
+    /*
+     Map<String, String> columnMapping = Map.of(
+      "name", "NAME",
+      "displayName", "DISPLAY_NAME",
+      "description", "DESCRIPTION",
+      "iasLastModified", "IAS_LAST_MODIFIED"
+  );
 
+  StringBuilder sql = new StringBuilder("UPDATE USER_GROUPS SET ");
+  List<Object> params = new ArrayList<>();
+
+  columnMapping.forEach((key, column) -> {
+    if (updates.containsKey(key) && updates.get(key) != null) {
+      sql.append(column).append(" = ?, ");
+      params.add(updates.get(key));
+    }
+  });
+    */
+
+    //You don't validate if the values of the objects in the class are present or not, this may cause query execution with empty data and 
+    //bring an exception
     if (updates.containsKey("name")) {
       if (!first) sql.append(", ");
       sql.append("NAME = ?");

@@ -19,6 +19,9 @@ public class GroupMemberRepository {
 
   /** Get all members of a group */
   public List<Map<String, Object>> findMembersByGroupId(String groupId) {
+
+    //REVIEW: Take out sqls into constants, that way we can re-use as needed. Also track if you have repeating SELECTS, WHERE clauses etc so you can mix 
+    //and match modularly whatever you may need. Future proofing and easier to use down the line when a DBManager class like this grows
     String sql =
         """
         SELECT
@@ -35,6 +38,11 @@ public class GroupMemberRepository {
         ORDER BY gm.CREATED_AT DESC
         """;
 
+    //REVIEW: My advice is to create separate new Object Classes for your use cases - let's say for this case User - Object May cause casting issues
+    //and make refactoring harder down the line if we want to build ontop of the existing functionality
+
+    //REVIEW: Wrap all jdbc query calls with your own try/catch in order to have better control over your logic flow and handle errors when
+    //the persistance layer folds. Return a human-readable log to notify that the DB layer has ran into a fault for whichever attempted operation
     List<Map<String, Object>> results = jdbc.queryForList(sql, groupId);
     log.info("Found {} members for group {}", results.size(), groupId);
     return results;
@@ -68,7 +76,8 @@ public class GroupMemberRepository {
         INSERT INTO GROUP_MEMBERS (GROUP_ID, USER_ID, CREATED_AT)
         VALUES (?, ?, CURRENT_UTCTIMESTAMP)
         """;
-
+    //REVIEW: You don't check for uniqueness of the inserted user via GROUP_ID and USER_ID. If such a member already exists and you want to update
+    //a field there, implement a separate method called updateMember
     jdbc.update(sql, groupId, userId);
     log.info("Added user {} to group {}", userId, groupId);
   }
@@ -83,7 +92,9 @@ public class GroupMemberRepository {
 
   public void removeMembers(String groupId, List<String> userIds) {
     String sql = "DELETE FROM GROUP_MEMBERS WHERE GROUP_ID = ? AND USER_ID = ?";
-
+    //REVIEW: Perform batch calls here - iterating over every user and delegating an entire db request individually can be cumbersome on the service
+    // Use IN() and batch a 100 at a time. For the scale of this test project it doesn't really matter, but when scaled to a big use-case, 
+    //you can run into resource troubles - Check your other methods for possibility of implementing batch queries
     for (String userId : userIds) {
       jdbc.update(sql, groupId, userId);
       log.info("Removed user {} from group {}", userId, groupId);
@@ -100,6 +111,7 @@ public class GroupMemberRepository {
 
   /** Check if a user is a member of a group */
   public boolean isMember(String groupId, String userId) {
+    //REVIEW: Use EXISTS rather than count, it's a much more efficient query
     String sql = "SELECT COUNT(*) FROM GROUP_MEMBERS WHERE GROUP_ID = ? AND USER_ID = ?";
     Integer count = jdbc.queryForObject(sql, Integer.class, groupId, userId);
     return count != null && count > 0;
@@ -114,6 +126,9 @@ public class GroupMemberRepository {
         """;
 
     List<Map<String, Object>> results = jdbc.queryForList(sql);
+    //REVIEW: After refactoring go over the code and segment your logs into INFO and DEBUG. Determine which logs are worthwhile to always log and which ones
+    //only in specialized cases when you want more visibility and turn on debug logging. This way you'll keep your service clean when it comes to logging and not
+    //bog down the system with logs that are not always necessary. 
     log.info("Loaded {} user-group assignments from DB", results.size());
     return results;
   }

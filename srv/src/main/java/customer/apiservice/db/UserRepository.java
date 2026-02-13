@@ -59,6 +59,7 @@ public class UserRepository {
     SqlAndParams sp = buildUsersQuery(true, 1, 1, search, email, status, userType, country);
 
     log.info("=== COUNT USERS DEBUG ===");
+    //REVIEW: Logging direct SQL can be considered a vulnerability and opens up a possibility of a breach
     log.info("SQL: {}", sp.sql);
     log.info("Params: {}", sp.params);
 
@@ -213,7 +214,7 @@ public class UserRepository {
     List<Object> params = new ArrayList<>();
 
     boolean first = true;
-
+    //REVIEW: can use the Map logic here too to modularize and simplify the method
     // Handle loginName
     if (updates.containsKey("loginName")) {
       if (!first) sql.append(", ");
@@ -293,6 +294,7 @@ public class UserRepository {
           if (!first) sql.append(", ");
           sql.append("VALID_FROM = ?");
 
+          //REVIEW: Parse this as instant and then to timestamp - currently you're risking a DST bug
           // Parse ISO8601 string "2026-01-12T00:00:00Z"
           String dateStr = String.valueOf(validFromValue).replace("Z", "");
           LocalDateTime parsed =

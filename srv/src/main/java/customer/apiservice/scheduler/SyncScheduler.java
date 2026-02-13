@@ -16,11 +16,12 @@ public class SyncScheduler {
   @Autowired private UserSyncService userSyncService;
 
   @Autowired private GroupService groupService;
-
+  //REVIEW: you can use it to notify successes and failures - currently it isn't utilized
   @Autowired private SyncNotificationService syncNotificationService;
 
   @Autowired private UserGroupAssignmentService userGroupAssignmentService;
 
+  //REVIEW: You can use fixedDelay here to ensure that every iteration completes before the next
   /** Sync users and groups from IAS every minute */
   @Scheduled(fixedRate = 60000)
   public void syncUsersAndGroups() {

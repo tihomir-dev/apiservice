@@ -6,7 +6,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class SyncNotificationService {
-
+  //REVIEW: At runtime you can just create a centralized in-memory storage of all the data Map<String, Map<String,Object>> syncResults = new ConcurrentHashMap<>(); 
+  // The idea is that you can use syncResults.clear(); in the clear method , return syncResults.values().stream().anyMatch(Objects::nonNull); in the hasChanges method
+  //etc
   private Map<String, Object> lastUserSync;
   private Map<String, Object> lastGroupSync;
   private Map<String, Object> lastUserGroupAssignmentSync;
@@ -16,7 +18,12 @@ public class SyncNotificationService {
   public Map<String, Object> getNotification() {
     Map<String, Object> notification = new HashMap<>();
     notification.put("hasChanges", hasChanges);
-
+    //REVIEW: 
+    /*
+    return syncResults.entrySet().stream()
+    .filter(e -> e.getValue() != null)
+    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    */
     if (hasChanges) {
       // Only add non-null sync data
       if (lastUserSync != null) {
@@ -45,7 +52,7 @@ public class SyncNotificationService {
     this.lastGroupSync = result;
     this.hasChanges = true;
   }
-
+  
   public void clearNotifications() {
     this.hasChanges = false;
     this.lastUserSync = null;
